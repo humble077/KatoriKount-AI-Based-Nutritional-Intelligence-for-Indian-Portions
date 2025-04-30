@@ -31,37 +31,40 @@ class SheetsManager:
             logger.debug(f"All available secrets (masked): {mask_sensitive_data(dict(st.secrets))}")
             logger.debug(f"Secrets keys: {list(st.secrets.keys())}")
             
+            # Get the nested secrets
+            secrets = st.secrets.get('secrets', {})
+            logger.debug(f"Nested secrets keys: {list(secrets.keys())}")
+            
             # Try to get credentials from different possible locations
             credentials = None
             
             # Method 1: Check for google_credentials section
-            if "google_credentials" in st.secrets:
+            if "google_credentials" in secrets:
                 logger.debug("Method 1: Found google_credentials section")
-                logger.debug(f"google_credentials keys: {list(st.secrets['google_credentials'].keys())}")
-                logger.debug(f"google_credentials content (masked): {mask_sensitive_data(dict(st.secrets['google_credentials']))}")
-                credentials = st.secrets["google_credentials"]
+                logger.debug(f"google_credentials keys: {list(secrets['google_credentials'].keys())}")
+                logger.debug(f"google_credentials content (masked): {mask_sensitive_data(dict(secrets['google_credentials']))}")
+                credentials = secrets["google_credentials"]
             
             # Method 2: Check for individual fields at root level
-            elif all(key in st.secrets for key in ["type", "project_id", "private_key"]):
+            elif all(key in secrets for key in ["type", "project_id", "private_key"]):
                 logger.debug("Method 2: Found individual credential fields at root level")
-                logger.debug(f"Root level credentials (masked): {mask_sensitive_data({k: st.secrets[k] for k in ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']})}")
+                logger.debug(f"Root level credentials (masked): {mask_sensitive_data({k: secrets[k] for k in ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']})}")
                 credentials = {
-                    "type": st.secrets["type"],
-                    "project_id": st.secrets["project_id"],
-                    "private_key_id": st.secrets["private_key_id"],
-                    "private_key": st.secrets["private_key"],
-                    "client_email": st.secrets["client_email"],
-                    "client_id": st.secrets["client_id"],
-                    "auth_uri": st.secrets.get("auth_uri", "https://accounts.google.com/o/oauth2/auth"),
-                    "token_uri": st.secrets.get("token_uri", "https://oauth2.googleapis.com/token"),
-                    "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url", "https://www.googleapis.com/oauth2/v1/certs"),
-                    "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+                    "type": secrets["type"],
+                    "project_id": secrets["project_id"],
+                    "private_key_id": secrets["private_key_id"],
+                    "private_key": secrets["private_key"],
+                    "client_email": secrets["client_email"],
+                    "client_id": secrets["client_id"],
+                    "auth_uri": secrets.get("auth_uri", "https://accounts.google.com/o/oauth2/auth"),
+                    "token_uri": secrets.get("token_uri", "https://oauth2.googleapis.com/token"),
+                    "auth_provider_x509_cert_url": secrets.get("auth_provider_x509_cert_url", "https://www.googleapis.com/oauth2/v1/certs"),
+                    "client_x509_cert_url": secrets["client_x509_cert_url"]
                 }
             
             # Method 3: Check for individual fields with GOOGLE_ prefix
-            elif all(key in st.secrets.get('secrets', {}) for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
-                logger.debug("Method 3: Found GOOGLE_ prefixed fields in secrets section")
-                secrets = st.secrets['secrets']
+            elif all(key in secrets for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
+                logger.debug("Method 3: Found GOOGLE_ prefixed fields")
                 logger.debug(f"GOOGLE_ prefixed credentials (masked): {mask_sensitive_data({k: secrets[k] for k in ['GOOGLE_TYPE', 'GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_CLIENT_ID']})}")
                 credentials = {
                     "type": secrets["GOOGLE_TYPE"],
@@ -78,7 +81,7 @@ class SheetsManager:
             
             if not credentials:
                 logger.error("No valid credentials found in any format")
-                logger.error("Available secrets keys: " + ", ".join(st.secrets.keys()))
+                logger.error("Available secrets keys: " + ", ".join(secrets.keys()))
                 raise ValueError("Google credentials not found in Streamlit secrets. Please check your secrets configuration.")
             
             logger.debug("=== CREDENTIALS DEBUG INFO ===")
@@ -90,8 +93,8 @@ class SheetsManager:
             # Get spreadsheet ID
             spreadsheet_id = None
             for key in ["spreadsheet_id", "SPREADSHEET_ID", "GOOGLE_SPREADSHEET_ID"]:
-                if key in st.secrets.get('secrets', {}):
-                    spreadsheet_id = st.secrets['secrets'][key]
+                if key in secrets:
+                    spreadsheet_id = secrets[key]
                     logger.debug(f"Found spreadsheet ID in {key}: {spreadsheet_id}")
                     break
             
