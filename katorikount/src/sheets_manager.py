@@ -17,6 +17,12 @@ def mask_sensitive_data(secrets_dict):
             masked[key] = '***MASKED***'
     return masked
 
+def get_nested_secrets(secrets_dict, key):
+    """Get secrets from nested structure."""
+    if 'secrets' in secrets_dict:
+        return secrets_dict['secrets'].get(key)
+    return secrets_dict.get(key)
+
 class SheetsManager:
     def __init__(self):
         try:
@@ -53,20 +59,21 @@ class SheetsManager:
                 }
             
             # Method 3: Check for individual fields with GOOGLE_ prefix
-            elif all(key in st.secrets for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
-                logger.debug("Method 3: Found GOOGLE_ prefixed fields")
-                logger.debug(f"GOOGLE_ prefixed credentials (masked): {mask_sensitive_data({k: st.secrets[k] for k in ['GOOGLE_TYPE', 'GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_CLIENT_ID']})}")
+            elif all(key in st.secrets.get('secrets', {}) for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
+                logger.debug("Method 3: Found GOOGLE_ prefixed fields in secrets section")
+                secrets = st.secrets['secrets']
+                logger.debug(f"GOOGLE_ prefixed credentials (masked): {mask_sensitive_data({k: secrets[k] for k in ['GOOGLE_TYPE', 'GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_CLIENT_ID']})}")
                 credentials = {
-                    "type": st.secrets["GOOGLE_TYPE"],
-                    "project_id": st.secrets["GOOGLE_PROJECT_ID"],
-                    "private_key_id": st.secrets["GOOGLE_PRIVATE_KEY_ID"],
-                    "private_key": st.secrets["GOOGLE_PRIVATE_KEY"],
-                    "client_email": st.secrets["GOOGLE_CLIENT_EMAIL"],
-                    "client_id": st.secrets["GOOGLE_CLIENT_ID"],
-                    "auth_uri": st.secrets.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
-                    "token_uri": st.secrets.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
-                    "auth_provider_x509_cert_url": st.secrets.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
-                    "client_x509_cert_url": st.secrets["GOOGLE_CLIENT_X509_CERT_URL"]
+                    "type": secrets["GOOGLE_TYPE"],
+                    "project_id": secrets["GOOGLE_PROJECT_ID"],
+                    "private_key_id": secrets["GOOGLE_PRIVATE_KEY_ID"],
+                    "private_key": secrets["GOOGLE_PRIVATE_KEY"],
+                    "client_email": secrets["GOOGLE_CLIENT_EMAIL"],
+                    "client_id": secrets["GOOGLE_CLIENT_ID"],
+                    "auth_uri": secrets.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+                    "token_uri": secrets.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+                    "auth_provider_x509_cert_url": secrets.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
+                    "client_x509_cert_url": secrets["GOOGLE_CLIENT_X509_CERT_URL"]
                 }
             
             if not credentials:
@@ -83,8 +90,8 @@ class SheetsManager:
             # Get spreadsheet ID
             spreadsheet_id = None
             for key in ["spreadsheet_id", "SPREADSHEET_ID", "GOOGLE_SPREADSHEET_ID"]:
-                if key in st.secrets:
-                    spreadsheet_id = st.secrets[key]
+                if key in st.secrets.get('secrets', {}):
+                    spreadsheet_id = st.secrets['secrets'][key]
                     logger.debug(f"Found spreadsheet ID in {key}: {spreadsheet_id}")
                     break
             
