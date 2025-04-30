@@ -8,12 +8,21 @@ from googleapiclient.errors import HttpError
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def mask_sensitive_data(secrets_dict):
+    """Mask sensitive data in secrets for logging."""
+    masked = secrets_dict.copy()
+    sensitive_keys = ['private_key', 'GOOGLE_PRIVATE_KEY']
+    for key in sensitive_keys:
+        if key in masked:
+            masked[key] = '***MASKED***'
+    return masked
+
 class SheetsManager:
     def __init__(self):
         try:
             # Log all available secrets for debugging
             logger.debug("=== SECRETS DEBUG INFO ===")
-            logger.debug(f"All available secrets: {dict(st.secrets)}")
+            logger.debug(f"All available secrets (masked): {mask_sensitive_data(dict(st.secrets))}")
             logger.debug(f"Secrets keys: {list(st.secrets.keys())}")
             
             # Try to get credentials from different possible locations
@@ -23,11 +32,13 @@ class SheetsManager:
             if "google_credentials" in st.secrets:
                 logger.debug("Method 1: Found google_credentials section")
                 logger.debug(f"google_credentials keys: {list(st.secrets['google_credentials'].keys())}")
+                logger.debug(f"google_credentials content (masked): {mask_sensitive_data(dict(st.secrets['google_credentials']))}")
                 credentials = st.secrets["google_credentials"]
             
             # Method 2: Check for individual fields at root level
             elif all(key in st.secrets for key in ["type", "project_id", "private_key"]):
                 logger.debug("Method 2: Found individual credential fields at root level")
+                logger.debug(f"Root level credentials (masked): {mask_sensitive_data({k: st.secrets[k] for k in ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id']})}")
                 credentials = {
                     "type": st.secrets["type"],
                     "project_id": st.secrets["project_id"],
@@ -44,6 +55,7 @@ class SheetsManager:
             # Method 3: Check for individual fields with GOOGLE_ prefix
             elif all(key in st.secrets for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
                 logger.debug("Method 3: Found GOOGLE_ prefixed fields")
+                logger.debug(f"GOOGLE_ prefixed credentials (masked): {mask_sensitive_data({k: st.secrets[k] for k in ['GOOGLE_TYPE', 'GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_CLIENT_ID']})}")
                 credentials = {
                     "type": st.secrets["GOOGLE_TYPE"],
                     "project_id": st.secrets["GOOGLE_PROJECT_ID"],
@@ -73,7 +85,7 @@ class SheetsManager:
             for key in ["spreadsheet_id", "SPREADSHEET_ID", "GOOGLE_SPREADSHEET_ID"]:
                 if key in st.secrets:
                     spreadsheet_id = st.secrets[key]
-                    logger.debug(f"Found spreadsheet ID in {key}")
+                    logger.debug(f"Found spreadsheet ID in {key}: {spreadsheet_id}")
                     break
             
             if not spreadsheet_id:
@@ -88,7 +100,7 @@ class SheetsManager:
             
         except Exception as e:
             logger.error(f"Error initializing SheetsManager: {str(e)}")
-            logger.error(f"Available secrets: {dict(st.secrets)}")
+            logger.error(f"Available secrets (masked): {mask_sensitive_data(dict(st.secrets))}")
             raise
             
     def _get_service(self, credentials_dict):
