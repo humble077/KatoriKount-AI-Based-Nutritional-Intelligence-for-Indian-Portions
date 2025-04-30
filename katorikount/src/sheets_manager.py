@@ -7,21 +7,46 @@ from googleapiclient.errors import HttpError
 class SheetsManager:
     def __init__(self):
         try:
-            # Validate secrets are present
-            if "google_credentials" not in st.secrets:
-                raise ValueError("Google credentials not found in Streamlit secrets")
-            if "spreadsheet_id" not in st.secrets:
+            # Log available secrets for debugging
+            logging.debug(f"Available secrets: {list(st.secrets.keys())}")
+            
+            # Try to get credentials from different possible locations
+            if "google_credentials" in st.secrets:
+                credentials = st.secrets["google_credentials"]
+            elif all(key in st.secrets for key in ["GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
+                # Fallback to individual secret keys
+                credentials = {
+                    "type": "service_account",
+                    "project_id": st.secrets["GOOGLE_PROJECT_ID"],
+                    "private_key_id": st.secrets["GOOGLE_PRIVATE_KEY_ID"],
+                    "private_key": st.secrets["GOOGLE_PRIVATE_KEY"],
+                    "client_email": st.secrets["GOOGLE_CLIENT_EMAIL"],
+                    "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_x509_cert_url": st.secrets["GOOGLE_CLIENT_CERT_URL"]
+                }
+            else:
+                raise ValueError("Google credentials not found in Streamlit secrets. Please check your secrets configuration.")
+                
+            # Get spreadsheet ID
+            if "spreadsheet_id" in st.secrets:
+                self.spreadsheet_id = st.secrets["spreadsheet_id"]
+            elif "SPREADSHEET_ID" in st.secrets:
+                self.spreadsheet_id = st.secrets["SPREADSHEET_ID"]
+            else:
                 raise ValueError("Spreadsheet ID not found in Streamlit secrets")
                 
-            self.service = self._get_service()
-            self.spreadsheet_id = st.secrets["spreadsheet_id"]
+            self.service = self._get_service(credentials)
             logging.info("SheetsManager initialized successfully")
             
         except Exception as e:
             logging.error(f"Error initializing SheetsManager: {str(e)}")
+            logging.error(f"Available secrets: {list(st.secrets.keys())}")
             raise
             
-    def _get_service(self):
+    def _get_service(self, credentials_dict):
         """Initialize and return the Google Sheets service."""
         try:
             # Validate all required fields are present
@@ -32,21 +57,12 @@ class SheetsManager:
             ]
             
             for field in required_fields:
-                if field not in st.secrets["google_credentials"]:
+                if field not in credentials_dict:
                     raise ValueError(f"Missing required field in Google credentials: {field}")
                     
-            credentials_dict = {
-                "type": st.secrets["google_credentials"]["type"],
-                "project_id": st.secrets["google_credentials"]["project_id"],
-                "private_key_id": st.secrets["google_credentials"]["private_key_id"],
-                "private_key": st.secrets["google_credentials"]["private_key"].replace("\\n", "\n"),
-                "client_email": st.secrets["google_credentials"]["client_email"],
-                "client_id": st.secrets["google_credentials"]["client_id"],
-                "auth_uri": st.secrets["google_credentials"]["auth_uri"],
-                "token_uri": st.secrets["google_credentials"]["token_uri"],
-                "auth_provider_x509_cert_url": st.secrets["google_credentials"]["auth_provider_x509_cert_url"],
-                "client_x509_cert_url": st.secrets["google_credentials"]["client_x509_cert_url"]
-            }
+            # Ensure private key has proper newlines
+            if isinstance(credentials_dict["private_key"], str):
+                credentials_dict["private_key"] = credentials_dict["private_key"].replace("\\n", "\n")
             
             logging.debug("Creating credentials from service account info")
             credentials = service_account.Credentials.from_service_account_info(
