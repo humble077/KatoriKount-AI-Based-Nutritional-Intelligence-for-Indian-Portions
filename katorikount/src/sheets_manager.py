@@ -16,17 +16,18 @@ class SheetsManager:
             logger.debug(f"All available secrets: {dict(st.secrets)}")
             logger.debug(f"Secrets keys: {list(st.secrets.keys())}")
             
-            # Check for google_credentials section
+            # Try to get credentials from different possible locations
+            credentials = None
+            
+            # Method 1: Check for google_credentials section
             if "google_credentials" in st.secrets:
-                logger.debug("Found google_credentials section")
+                logger.debug("Method 1: Found google_credentials section")
                 logger.debug(f"google_credentials keys: {list(st.secrets['google_credentials'].keys())}")
                 credentials = st.secrets["google_credentials"]
-            else:
-                logger.debug("No google_credentials section found")
             
-            # Check for individual credential fields
-            if all(key in st.secrets for key in ["type", "project_id", "private_key"]):
-                logger.debug("Found individual credential fields")
+            # Method 2: Check for individual fields at root level
+            elif all(key in st.secrets for key in ["type", "project_id", "private_key"]):
+                logger.debug("Method 2: Found individual credential fields at root level")
                 credentials = {
                     "type": st.secrets["type"],
                     "project_id": st.secrets["project_id"],
@@ -39,10 +40,26 @@ class SheetsManager:
                     "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url", "https://www.googleapis.com/oauth2/v1/certs"),
                     "client_x509_cert_url": st.secrets["client_x509_cert_url"]
                 }
-            else:
-                logger.debug("Individual credential fields not found")
+            
+            # Method 3: Check for individual fields with GOOGLE_ prefix
+            elif all(key in st.secrets for key in ["GOOGLE_TYPE", "GOOGLE_PROJECT_ID", "GOOGLE_PRIVATE_KEY"]):
+                logger.debug("Method 3: Found GOOGLE_ prefixed fields")
+                credentials = {
+                    "type": st.secrets["GOOGLE_TYPE"],
+                    "project_id": st.secrets["GOOGLE_PROJECT_ID"],
+                    "private_key_id": st.secrets["GOOGLE_PRIVATE_KEY_ID"],
+                    "private_key": st.secrets["GOOGLE_PRIVATE_KEY"],
+                    "client_email": st.secrets["GOOGLE_CLIENT_EMAIL"],
+                    "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+                    "auth_uri": st.secrets.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+                    "token_uri": st.secrets.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+                    "auth_provider_x509_cert_url": st.secrets.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
+                    "client_x509_cert_url": st.secrets["GOOGLE_CLIENT_X509_CERT_URL"]
+                }
             
             if not credentials:
+                logger.error("No valid credentials found in any format")
+                logger.error("Available secrets keys: " + ", ".join(st.secrets.keys()))
                 raise ValueError("Google credentials not found in Streamlit secrets. Please check your secrets configuration.")
             
             logger.debug("=== CREDENTIALS DEBUG INFO ===")
@@ -52,14 +69,20 @@ class SheetsManager:
             logger.debug(f"Private key present: {'private_key' in credentials}")
             
             # Get spreadsheet ID
-            if "spreadsheet_id" in st.secrets:
-                self.spreadsheet_id = st.secrets["spreadsheet_id"]
-            elif "SPREADSHEET_ID" in st.secrets:
-                self.spreadsheet_id = st.secrets["SPREADSHEET_ID"]
-            else:
+            spreadsheet_id = None
+            for key in ["spreadsheet_id", "SPREADSHEET_ID", "GOOGLE_SPREADSHEET_ID"]:
+                if key in st.secrets:
+                    spreadsheet_id = st.secrets[key]
+                    logger.debug(f"Found spreadsheet ID in {key}")
+                    break
+            
+            if not spreadsheet_id:
+                logger.error("No spreadsheet ID found in any format")
                 raise ValueError("Spreadsheet ID not found in Streamlit secrets")
-                
+            
+            self.spreadsheet_id = spreadsheet_id
             logger.debug(f"Using spreadsheet ID: {self.spreadsheet_id}")
+            
             self.service = self._get_service(credentials)
             logger.info("SheetsManager initialized successfully")
             
