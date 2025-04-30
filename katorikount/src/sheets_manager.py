@@ -12,15 +12,21 @@ class SheetsManager:
     def __init__(self):
         try:
             # Log all available secrets for debugging
+            logger.debug("=== SECRETS DEBUG INFO ===")
             logger.debug(f"All available secrets: {dict(st.secrets)}")
+            logger.debug(f"Secrets keys: {list(st.secrets.keys())}")
             
-            # Try to get credentials from different possible locations
-            credentials = None
+            # Check for google_credentials section
             if "google_credentials" in st.secrets:
-                logger.debug("Found google_credentials in secrets")
+                logger.debug("Found google_credentials section")
+                logger.debug(f"google_credentials keys: {list(st.secrets['google_credentials'].keys())}")
                 credentials = st.secrets["google_credentials"]
-            elif all(key in st.secrets for key in ["type", "project_id", "private_key"]):
-                logger.debug("Found individual credential fields in secrets")
+            else:
+                logger.debug("No google_credentials section found")
+            
+            # Check for individual credential fields
+            if all(key in st.secrets for key in ["type", "project_id", "private_key"]):
+                logger.debug("Found individual credential fields")
                 credentials = {
                     "type": st.secrets["type"],
                     "project_id": st.secrets["project_id"],
@@ -33,10 +39,18 @@ class SheetsManager:
                     "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url", "https://www.googleapis.com/oauth2/v1/certs"),
                     "client_x509_cert_url": st.secrets["client_x509_cert_url"]
                 }
+            else:
+                logger.debug("Individual credential fields not found")
             
             if not credentials:
                 raise ValueError("Google credentials not found in Streamlit secrets. Please check your secrets configuration.")
-                
+            
+            logger.debug("=== CREDENTIALS DEBUG INFO ===")
+            logger.debug(f"Credentials type: {credentials.get('type')}")
+            logger.debug(f"Project ID: {credentials.get('project_id')}")
+            logger.debug(f"Client email: {credentials.get('client_email')}")
+            logger.debug(f"Private key present: {'private_key' in credentials}")
+            
             # Get spreadsheet ID
             if "spreadsheet_id" in st.secrets:
                 self.spreadsheet_id = st.secrets["spreadsheet_id"]
