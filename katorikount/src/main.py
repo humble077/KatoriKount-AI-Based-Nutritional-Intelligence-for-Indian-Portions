@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 def setup_google_sheets():
     try:
-        # Save the JSON to a temp file
+        # Save credentials to a temporary file
         creds_path = "/tmp/creds.json"
         with open(creds_path, "w") as f:
             f.write(st.secrets["GOOGLE_CREDS_JSON"])
         
-        # Set environment variables so Google API can use them
+        # Set environment variables for use with libraries like gspread
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
         os.environ["SPREADSHEET_ID"] = st.secrets["SPREADSHEET_ID"]
         
@@ -41,6 +41,8 @@ def setup_google_sheets():
     except Exception as e:
         st.sidebar.error(f"Error connecting to Google Sheets: {str(e)}")
         st.sidebar.error("Please check your credentials in Streamlit secrets.")
+        logger.error(f"Google Sheets connection error: {str(e)}")
+        logger.error(traceback.format_exc())
         return None
 
 def main():
@@ -51,6 +53,9 @@ def main():
     st.sidebar.title("Debug Information")
     st.sidebar.write(f"Working Directory: {os.getcwd()}")
     st.sidebar.write(f"Files in directory: {os.listdir()}")
+    
+    # Show environment variables for debugging
+    st.sidebar.write("Environment Variables:")
     st.sidebar.write(f"SPREADSHEET_ID: {os.getenv('SPREADSHEET_ID')}")
     st.sidebar.write(f"GOOGLE_APPLICATION_CREDENTIALS: {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}")
     
