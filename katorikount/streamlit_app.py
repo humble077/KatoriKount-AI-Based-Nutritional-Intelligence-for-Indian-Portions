@@ -1,5 +1,5 @@
 import streamlit as st
-from src.sheets_manager import SheetsManager
+from katorikount.src.sheets_manager import SheetsManager
 import pandas as pd
 import logging
 import traceback
