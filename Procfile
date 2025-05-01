@@ -1,1 +1,1 @@
-web: streamlit run katorikount/streamlit_app.py 
+web: PYTHONPATH=/app streamlit run katorikount/src/main.py 
