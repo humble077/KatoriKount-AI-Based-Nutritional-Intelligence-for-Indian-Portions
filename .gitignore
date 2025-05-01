@@ -36,6 +36,7 @@ ENV/
 # Credentials
 katorikount/src/config.py
 .streamlit/secrets.toml
+service_account.json
 
 # Logs
 *.log
