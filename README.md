@@ -55,7 +55,12 @@ spreadsheet_id = "your-spreadsheet-id"
 streamlit run katorikount/streamlit_app.py
 ```
 
-### Streamlit Cloud Deployment
+### Deployment Options
+
+#### Railway Deployment (Recommended)
+For a simple and straightforward deployment, follow the instructions in [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md).
+
+#### Streamlit Cloud Deployment
 1. Fork this repository
 2. Go to [Streamlit Cloud](https://share.streamlit.io/)
 3. Connect your GitHub account
