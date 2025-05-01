@@ -23,14 +23,16 @@ logger = logging.getLogger(__name__)
 def setup_google_sheets():
     try:
         # Log available secrets for debugging
-        logger.debug(f"Available secrets: {list(st.secrets.keys())}")
+        logger.debug(f"Available secrets sections: {list(st.secrets.keys())}")
+        if 'general' in st.secrets:
+            logger.debug(f"Keys in general section: {list(st.secrets.general.keys())}")
         
         # Create a temporary file that works on both Windows and Unix
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             creds_path = f.name
             try:
                 # Get credentials from secrets
-                creds_json = st.secrets["GOOGLE_CREDS_JSON"]
+                creds_json = st.secrets.general["GOOGLE_CREDS_JSON"]
                 logger.debug("Successfully retrieved GOOGLE_CREDS_JSON from secrets")
                 
                 # Write credentials to temp file
@@ -44,7 +46,7 @@ def setup_google_sheets():
         
         # Set environment variables for use with libraries like gspread
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-        os.environ["SPREADSHEET_ID"] = st.secrets["SPREADSHEET_ID"]
+        os.environ["SPREADSHEET_ID"] = st.secrets.general["SPREADSHEET_ID"]
         logger.debug("Set environment variables successfully")
         
         # Initialize Google Sheets client
@@ -82,7 +84,9 @@ def main():
     st.sidebar.write("Environment Variables:")
     st.sidebar.write(f"SPREADSHEET_ID: {os.getenv('SPREADSHEET_ID')}")
     st.sidebar.write(f"GOOGLE_APPLICATION_CREDENTIALS: {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}")
-    st.sidebar.write("Available Secrets:", list(st.secrets.keys()))
+    st.sidebar.write("Available Secrets Sections:", list(st.secrets.keys()))
+    if 'general' in st.secrets:
+        st.sidebar.write("Keys in general section:", list(st.secrets.general.keys()))
     
     try:
         # Initialize Google Sheets
