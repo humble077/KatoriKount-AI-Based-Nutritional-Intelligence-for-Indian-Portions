@@ -24,8 +24,20 @@ def setup_google_sheets():
     try:
         # Log available secrets for debugging
         logger.debug(f"Available secrets sections: {list(st.secrets.keys())}")
-        if 'general' in st.secrets:
-            logger.debug(f"Keys in general section: {list(st.secrets.general.keys())}")
+        
+        # Check if secrets are properly loaded
+        if not hasattr(st, 'secrets'):
+            raise Exception("Streamlit secrets are not available. Please check your secrets.toml configuration.")
+            
+        # Check if general section exists
+        if not hasattr(st.secrets, 'general'):
+            raise Exception("The 'general' section is missing from secrets.toml. Please add it.")
+            
+        # Check if required keys exist
+        required_keys = ['GOOGLE_CREDS_JSON', 'SPREADSHEET_ID']
+        missing_keys = [key for key in required_keys if key not in st.secrets.general]
+        if missing_keys:
+            raise Exception(f"Missing required keys in secrets.toml: {', '.join(missing_keys)}")
         
         # Create a temporary file that works on both Windows and Unix
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
@@ -84,9 +96,15 @@ def main():
     st.sidebar.write("Environment Variables:")
     st.sidebar.write(f"SPREADSHEET_ID: {os.getenv('SPREADSHEET_ID')}")
     st.sidebar.write(f"GOOGLE_APPLICATION_CREDENTIALS: {os.getenv('GOOGLE_APPLICATION_CREDENTIALS')}")
-    st.sidebar.write("Available Secrets Sections:", list(st.secrets.keys()))
-    if 'general' in st.secrets:
-        st.sidebar.write("Keys in general section:", list(st.secrets.general.keys()))
+    
+    # Show secrets information
+    st.sidebar.write("Secrets Information:")
+    if hasattr(st, 'secrets'):
+        st.sidebar.write("Available Secrets Sections:", list(st.secrets.keys()))
+        if hasattr(st.secrets, 'general'):
+            st.sidebar.write("Keys in general section:", list(st.secrets.general.keys()))
+    else:
+        st.sidebar.error("No secrets available. Please check your secrets.toml configuration.")
     
     try:
         # Initialize Google Sheets
