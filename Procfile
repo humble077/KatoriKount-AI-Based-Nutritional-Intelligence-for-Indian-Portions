@@ -1,1 +1,1 @@
-web: streamlit run katorikount/src/main.py 
+web: streamlit run katorikount/streamlit_app.py 
