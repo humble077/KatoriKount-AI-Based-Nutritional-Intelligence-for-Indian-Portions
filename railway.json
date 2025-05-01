@@ -9,7 +9,8 @@
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "always",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 10,
+    "port": 8501
   },
   "deploy.healthcheck": {
     "path": "/",
